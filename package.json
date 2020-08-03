@@ -22,6 +22,7 @@
     "moment": "^2.10.6",
     "monk": "^1.0.1",
     "node-logentries": "^0.1.4",
+    "objtojs": "^0.1.2",
     "shelljs": "^0.5.3",
     "socket.io-redis": "^0.1.4",
     "underscore": "^1.8.3"

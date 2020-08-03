@@ -53,73 +53,115 @@ var session = {
 		var v1, v2, v3, v4;
 		var positions, colors, color, normals;
 
-		radius = radius || 50;
-		widthSegments = Math.max( 3, Math.floor( widthSegments ) || 8 );
-		heightSegments = Math.max( 2, Math.floor( heightSegments ) || 6 );
-		
-		//INITIALIZING VERTEX POSITIONS, NORMALS, UVS
-		for ( y = 0; y <= heightSegments; y ++ ) {
+		if (process.env.MODEL_PATH) {
+			var parser = require('objtojs')
+			var data = parser.parseSync(process.env.MODEL_PATH);
+			var avgx = 0;
+			var avgy = 0;
+			var avgz = 0;
 
-			verticesRow = [];
-			v = y / heightSegments;
-			for ( x = 0; x <= widthSegments; x ++ ) {
+			_.each(data.data.data, function (elem, index)  {
+				//if (_.isEmpty(elem)) { return; }
+				if (elem.type === 'geometric') {
+					vertexPosition.push(elem.value[0] * 5);
+					vertexPosition.push(elem.value[1] * 5);
+					vertexPosition.push(elem.value[2] * 5);
+					avgx += elem.value[0] * 5;
+					avgy += elem.value[1] * 5;
+					avgz += elem.value[2] * 5;
+				}
+				else if (elem.type === 'normals') {
+					vertexNormal.push(elem.value[0]);
+					vertexNormal.push(elem.value[1]);
+					vertexNormal.push(elem.value[2]);
+				}
+				else if (elem.type === 'face') {
+					_.each(elem.value.vertex, function (vertex) {
+						indices.push(vertex - 1)
+					})
+				}
+			})
+			avgx /= (vertexPosition.length/3);
+			avgy /= (vertexPosition.length/3);
+			avgz /= (vertexPosition.length/3);
+			for ( var i = 0, length = vertexPosition.length; i < length; i += 3 ) {
 
-				u = x / widthSegments;
-
-				px = - radius * Math.cos( phiStart + u * phiLength ) * Math.sin( thetaStart + v * thetaLength );
-				py = radius * Math.cos( thetaStart + v * thetaLength );
-				pz = radius * Math.sin( phiStart + u * phiLength ) * Math.sin( thetaStart + v * thetaLength );
-
-				normal.set( px, py, pz ).normalize();
-				hash = Math.round(px) + '_' + Math.round(py) + '_' + Math.round(pz);
-				vertexCache[ hash ] = {
-					normal: new utils.Vector3( normal.x, normal.y, normal.z ),
-					position: new utils.Vector3( px, py, pz ),
-					uv: new utils.Vector2( u, 1 - v )
-				};
-				verticesRow.push( hash );
-				index ++;
-
+				vertexPosition[i + 0] -= avgx;
+				vertexPosition[i + 1] -= avgy;
+				vertexPosition[i + 2] -= avgz; 
 			}
 
-			vertices.push( verticesRow );
-		}
+			// console.log(data /*JSON.stringify(data)*/)
+		} else {
 
-		for ( key in vertexCache ) {
+			radius = radius || 50;
+			widthSegments = Math.max( 3, Math.floor( widthSegments ) || 8 );
+			heightSegments = Math.max( 2, Math.floor( heightSegments ) || 6 );
+			
+			//INITIALIZING VERTEX POSITIONS, NORMALS, UVS
+			for ( y = 0; y <= heightSegments; y ++ ) {
 
-			vertex = vertexCache[key];
-			vertexPosition.push(vertex.position.x, vertex.position.y, vertex.position.z);
-			vertexNormal.push(vertex.normal.x, vertex.normal.y, vertex.normal.z);
-			vertexUV.push(vertex.uv.x, vertex.uv.y);
-			vertexCache[key].index = vertexPosition.length / 3 - 1;
-		}
+				verticesRow = [];
+				v = y / heightSegments;
+				for ( x = 0; x <= widthSegments; x ++ ) {
 
-		//INITIALIZING FACES
-		for ( y = 0; y < heightSegments; y ++ ) {
+					u = x / widthSegments;
 
-			for ( x = 0; x < widthSegments; x ++ ) {
+					px = - radius * Math.cos( phiStart + u * phiLength ) * Math.sin( thetaStart + v * thetaLength );
+					py = radius * Math.cos( thetaStart + v * thetaLength );
+					pz = radius * Math.sin( phiStart + u * phiLength ) * Math.sin( thetaStart + v * thetaLength );
 
-				v1 = vertices[ y ][ x + 1 ];
-				v2 = vertices[ y ][ x ];
-				v3 = vertices[ y + 1 ][ x ];
-				v4 = vertices[ y + 1 ][ x + 1 ];
+					normal.set( px, py, pz ).normalize();
+					hash = Math.round(px) + '_' + Math.round(py) + '_' + Math.round(pz);
+					vertexCache[ hash ] = {
+						normal: new utils.Vector3( normal.x, normal.y, normal.z ),
+						position: new utils.Vector3( px, py, pz ),
+						uv: new utils.Vector2( u, 1 - v )
+					};
+					verticesRow.push( hash );
+					index ++;
 
-				v1 = vertexCache[v1].index;
-				v2 = vertexCache[v2].index;
-				v3 = vertexCache[v3].index;
-				v4 = vertexCache[v4].index;
-
-				if ( y !== 0 || thetaStart > 0 ) {
-
-					indices.push( v1, v2, v4 );
 				}
-				if ( y !== heightSegments - 1 || thetaEnd < Math.PI ) {
 
-					indices.push( v2, v3, v4 );
+				vertices.push( verticesRow );
+			}
+
+			for ( key in vertexCache ) {
+
+				vertex = vertexCache[key];
+				vertexPosition.push(vertex.position.x, vertex.position.y, vertex.position.z);
+				vertexNormal.push(vertex.normal.x, vertex.normal.y, vertex.normal.z);
+				vertexUV.push(vertex.uv.x, vertex.uv.y);
+				vertexCache[key].index = vertexPosition.length / 3 - 1;
+			}
+
+			//INITIALIZING FACES
+			for ( y = 0; y < heightSegments; y ++ ) {
+
+				for ( x = 0; x < widthSegments; x ++ ) {
+
+					v1 = vertices[ y ][ x + 1 ];
+					v2 = vertices[ y ][ x ];
+					v3 = vertices[ y + 1 ][ x ];
+					v4 = vertices[ y + 1 ][ x + 1 ];
+
+					v1 = vertexCache[v1].index;
+					v2 = vertexCache[v2].index;
+					v3 = vertexCache[v3].index;
+					v4 = vertexCache[v4].index;
+
+					if ( y !== 0 || thetaStart > 0 ) {
+
+						indices.push( v1, v2, v4 );
+					}
+					if ( y !== heightSegments - 1 || thetaEnd < Math.PI ) {
+
+						indices.push( v2, v3, v4 );
+					}
+
 				}
 
 			}
-
 		}
 
 		positions = new Float32Array( vertexPosition );
@@ -169,7 +211,8 @@ var session = {
 		}
 		avgFaceArea /=  indices.length;
 
-
+		console.log('positions', positions.length / 3)
+		console.log('indices', indices.length / 3)
 
 		object.id = Math.random().toString(36).slice(2);
 		object.position = positions;
@@ -218,6 +261,7 @@ var session = {
 
 		var indices = object.index;
 		var positions = object.position;
+		var type = undefined;
 		
 		point = new utils.Vector3(point.x, point.y, point.z);
 		normal = new utils.Vector3(normal.x, normal.y, normal.z);
@@ -278,9 +322,9 @@ var session = {
 		}
 		avgSelectedArea /= selectedFaces.length;
 		
-		if (avgSelectedArea > maxFaceArea) {
+		if (avgSelectedArea > maxFaceArea && !process.env.MODEL_PATH) {
 
-			var type = session.partialSubdivide(selectedFaces);
+			type = session.partialSubdivide(selectedFaces);
 		}
 
 		return type || 'move';
