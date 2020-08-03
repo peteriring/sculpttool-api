@@ -10,7 +10,7 @@
     "stop": "forever stop sculpttool-api"
   },
   "dependencies": {
-    "airbrake": "^0.3.8",
+    "airbrake": "^2.1.3",
     "bluebird": "^2.9.34",
     "captains-log": "^0.11.11",
     "co": "^4.6.0",
